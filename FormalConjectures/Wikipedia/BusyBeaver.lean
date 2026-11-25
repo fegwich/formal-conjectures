@@ -69,10 +69,59 @@ theorem sanity_check (n : ℕ) [NeZero n] :
       M.haltingNumber = N} := by
   sorry
 
+/-- A halting machine with a single state halts after at most one step. -/
+@[category API, AMS 3]
+theorem haltingNumber_le_one_of_subsingleton {Γ Λ : Type*} [Inhabited Γ] [Inhabited Λ]
+    [Subsingleton Λ] (M : Machine Γ Λ) [hM : M.IsHalting] : M.haltingNumber ≤ 1 := by
+  have h0 : (Tape.mk₁ ([] : List Γ)).head = default := rfl
+  have hl : (Tape.mk₁ ([] : List Γ)).left = default := rfl
+  have hr : (Tape.mk₁ ([] : List Γ)).right = default := rfl
+  have h1 : (default : ListBlank Γ).head = default := rfl
+  have h2 : (default : ListBlank Γ).tail = default := rfl
+  rcases h : M default default with _ | ⟨_ | q, ⟨a, d⟩⟩
+  · refine sInf_le ⟨1, ?_, rfl⟩
+    simp [Machine.HaltsAfter, Machine.step, Machine.init, h0, h]
+  · refine sInf_le ⟨1, ?_, rfl⟩
+    simp [Machine.HaltsAfter, Machine.step, Machine.init, h0, h]
+  · exfalso
+    let P : Cfg Γ Λ → Prop := fun c => c.q = some default ∧ c.tape.head = default ∧
+      (match d with | .left => c.tape.left | .right => c.tape.right) = default
+    have hstep : ∀ c, P c → ∃ c', M.step c = some c' ∧ P c' := by
+      rintro ⟨_, ⟨hd, L, R⟩⟩ ⟨hq, hh, hs⟩
+      simp only at hq hh hs
+      subst hq
+      refine ⟨_, by simp [Machine.step, hh, h]; rfl, ?_⟩
+      cases d <;> simp_all [P, Subsingleton.elim q default, Tape.move]
+    have key : ∀ n, ∃ c, M.multiStep (Machine.init []) n = some c ∧ P c := by
+      intro n
+      induction n with
+      | zero => exact ⟨_, rfl, rfl, h0, by cases d <;> simp [Machine.init, hl, hr]⟩
+      | succ n ih =>
+        obtain ⟨c, hc, hP⟩ := ih
+        obtain ⟨c', h1, h2⟩ := hstep c hP
+        exact ⟨c', by simp [Machine.multiStep_succ, hc, h1], h2⟩
+    refine (Machine.not_isHalting_iff_forall_isSome_multiStep M).2 (fun n => ?_) hM
+    obtain ⟨c, hc, -⟩ := key (n + 1)
+    rw [hc]
+    rfl
+
 /-- The value of the Busy Beaver function for 1 state is 1. -/
 @[category test, AMS 3]
 theorem BB_1 : BB 1 = 1 := by
-  sorry
+  let M₁ : Machine Bool Unit := fun _ _ => some (none, ⟨default, Dir.right⟩)
+  have hM₁ : M₁.multiStep (Machine.init []) 2 = none := rfl
+  have hH : M₁.IsHalting := (Machine.isHalting_iff_exists_haltsAt M₁).2 ⟨1, hM₁⟩
+  let C : Candidate 1 := ⟨Bool, Unit, inferInstance, rfl, inferInstance, inferInstance, rfl,
+    inferInstance, M₁, hH⟩
+  have hC : C.M.haltingNumber = (1 : ℕ) := Machine.haltingNumber_def _ 1 ⟨_, rfl⟩ hM₁
+  have hle : ∀ N : ℕ, N ∈ {N : ℕ | ∃ C : Candidate 1, C.M.haltingNumber = N} → N ≤ 1 := by
+    rintro N ⟨C, hC⟩
+    have : Subsingleton C.Λ := Fintype.card_le_one_iff_subsingleton.1 C.Λ_card.le
+    have := C.M_isHalting
+    have := haltingNumber_le_one_of_subsingleton C.M
+    rw [hC] at this
+    exact_mod_cast this
+  exact le_antisymm (csSup_le ⟨1, C, hC⟩ hle) (le_csSup ⟨1, hle⟩ ⟨C, hC⟩)
 
 /-- The value of the Busy Beaver function for 2 states is 6. -/
 @[category textbook, AMS 3]
