@@ -46,6 +46,8 @@ theorem erdos_1171 :
 
 namespace erdos_1171.variants
 
+universe u
+
 /--
 **Erdős–Hajnal theorem** [EH74]: the case $k = 1$,
 $\omega_1^2 \to (\omega_1 \cdot \omega, 3)^2$.
@@ -60,9 +62,25 @@ a witness for the `k`-color version yields one for any `j ≤ k`.
 -/
 @[category API, AMS 5]
 theorem mono_k {j k : ℕ} (hjk : j ≤ k)
-    (hk : OrdinalMultiColorRamsey (ω_ 1 ^ 2) (ω_ 1 * ω) 3 k) :
-    OrdinalMultiColorRamsey (ω_ 1 ^ 2) (ω_ 1 * ω) 3 j := by
-  sorry
+    (hk : OrdinalMultiColorRamsey.{u} (ω_ 1 ^ 2) (ω_ 1 * ω) 3 k) :
+    OrdinalMultiColorRamsey.{u} (ω_ 1 ^ 2) (ω_ 1 * ω) 3 j := by
+  intro col
+  rcases hk (fun p => Fin.castLE (by omega) (col p)) with ⟨A, hA, hT⟩ | ⟨i, A, hA, hc⟩
+  · refine Or.inl ⟨A, fun x hx y hy hxy => ?_, hT⟩
+    have := hA x hx y hy hxy
+    rw [Fin.ext_iff] at this ⊢
+    simpa using this
+  · obtain ⟨⟨x, hx⟩, ⟨y, hy⟩, hxy⟩ := Cardinal.two_le_iff.1 (by rw [hc]; norm_num)
+    have hxy' : x ≠ y := fun h => hxy (Subtype.ext h)
+    have hi : (i : ℕ) < j := by
+      have h1 := congrArg Fin.val (hA x hx y hy hxy')
+      have h2 := (col s(x, y)).isLt
+      simp at h1
+      omega
+    refine Or.inr ⟨⟨i, hi⟩, A, fun a ha b hb hab => ?_, hc⟩
+    have := congrArg Fin.val (hA a ha b hb hab)
+    rw [Fin.ext_iff]
+    simpa using this
 
 /- **Baumgartner under MA (currently deferred)** [Ba89b]: assuming a form of Martin's
 Axiom, the binary partition relation `ω₁·ω → (ω₁·ω, 3)²` holds. We omit the Lean
