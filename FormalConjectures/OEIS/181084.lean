@@ -48,25 +48,60 @@ $\exp\bigl(\sum_{n \ge 1} [\sum_{k=0}^{n} \binom{n}{k}^{n+k+1} x^k] x^n/n\bigr)$
 noncomputable def a (m : ℕ) : ℚ :=
   coeff m (hannaExp fun n k => if k ≤ n then (n.choose k : ℤ) ^ (n + k + 1) else 0)
 
+/-- The series `hannaLog f` has zero constant coefficient. -/
+@[category API, AMS 11]
+theorem X_dvd_hannaLog (f : ℕ → ℕ → ℤ) : X ∣ hannaLog f := by
+  rw [X_dvd_iff]; simp [hannaLog]
+
+/-- The coefficient of $x^m$ in `hannaExp f` is the truncated exponential series
+$\sum_{d \le m} [x^m]\,L^d / d!$ with $L$ = `hannaLog f`. -/
+@[category API, AMS 11]
+theorem coeff_hannaExp (f : ℕ → ℕ → ℤ) (m : ℕ) :
+    coeff m (hannaExp f) =
+      ∑ d ∈ Finset.range (m + 1), (d.factorial : ℚ)⁻¹ * coeff m (hannaLog f ^ d) := by
+  have hs : HasSubst (hannaLog f) :=
+    HasSubst.of_constantCoeff_zero' (X_dvd_iff.1 (X_dvd_hannaLog f))
+  rw [hannaExp, coeff_subst' hs, finsum_eq_sum_of_support_subset _ (s := Finset.range (m + 1))]
+  · simp [coeff_exp, smul_eq_mul]
+  · intro d hd
+    simp only [Finset.coe_range, Set.mem_Iio]
+    by_contra h
+    apply hd
+    have : coeff m (hannaLog f ^ d) = 0 :=
+      X_pow_dvd_iff.1 (pow_dvd_pow_of_dvd (X_dvd_hannaLog f) d) m (by omega)
+    simp [this]
+
 @[category test, AMS 11]
 theorem a_0 : a 0 = 1 := by
-  sorry
+  rw [a, coeff_hannaExp]
+  simp [hannaLog]
 
 @[category test, AMS 11]
 theorem a_1 : a 1 = 1 := by
-  sorry
+  rw [a, coeff_hannaExp]
+  simp [Finset.sum_range_succ, pow_succ, hannaLog]
 
 @[category test, AMS 11]
 theorem a_2 : a 2 = 2 := by
-  sorry
+  rw [a, coeff_hannaExp]
+  simp [Finset.sum_range_succ, pow_succ, coeff_mul, Finset.Nat.antidiagonal_succ, hannaLog,
+    Finset.sum_Icc_succ_top]
+  norm_num
 
 @[category test, AMS 11]
 theorem a_3 : a 3 = 10 := by
-  sorry
+  rw [a, coeff_hannaExp]
+  simp [Finset.sum_range_succ, pow_succ, coeff_mul, Finset.Nat.antidiagonal_succ, hannaLog,
+    Finset.sum_Icc_succ_top]
+  norm_num
 
+set_option maxHeartbeats 1000000 in
 @[category test, AMS 11]
 theorem a_4 : a 4 = 92 := by
-  sorry
+  rw [a, coeff_hannaExp]
+  simp [Finset.sum_range_succ, pow_succ, coeff_mul, Finset.Nat.antidiagonal_succ, hannaLog,
+    Finset.sum_Icc_succ_top]
+  norm_num
 
 /--
 "Conjecture: this sequence consists entirely of integers."

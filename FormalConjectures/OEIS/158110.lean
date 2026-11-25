@@ -49,17 +49,44 @@ noncomputable def logSeries (q m : ℕ) : ℚ⟦X⟧ :=
 noncomputable def a (n : ℕ) : ℚ :=
   coeff n (subst (logSeries 2 3) (exp ℚ))
 
+/-- The series `logSeries q m` has zero constant coefficient. -/
+@[category API, AMS 5 11]
+theorem X_dvd_logSeries (q m : ℕ) : X ∣ logSeries q m := by
+  rw [X_dvd_iff]; simp [logSeries]
+
+/-- The coefficient of $x^n$ in $\exp(L)$, $L$ = `logSeries q m`, is the truncated exponential
+series $\sum_{d \le n} [x^n]\,L^d / d!$. -/
+@[category API, AMS 5 11]
+theorem coeff_subst_logSeries (q m n : ℕ) :
+    coeff n (subst (logSeries q m) (exp ℚ)) =
+      ∑ d ∈ Finset.range (n + 1), (d.factorial : ℚ)⁻¹ * coeff n (logSeries q m ^ d) := by
+  have hs : HasSubst (logSeries q m) :=
+    HasSubst.of_constantCoeff_zero' (X_dvd_iff.1 (X_dvd_logSeries q m))
+  rw [coeff_subst' hs, finsum_eq_sum_of_support_subset _ (s := Finset.range (n + 1))]
+  · simp [coeff_exp, smul_eq_mul]
+  · intro d hd
+    simp only [Finset.coe_range, Set.mem_Iio]
+    by_contra h
+    apply hd
+    have : coeff n (logSeries q m ^ d) = 0 :=
+      X_pow_dvd_iff.1 (pow_dvd_pow_of_dvd (X_dvd_logSeries q m) d) n (by omega)
+    simp [this]
+
 @[category test, AMS 5 11]
 theorem a_0 : a 0 = 1 := by
-  sorry
+  rw [a, coeff_subst_logSeries]
+  simp [logSeries]
 
 @[category test, AMS 5 11]
 theorem a_1 : a 1 = 2 := by
-  sorry
+  rw [a, coeff_subst_logSeries]
+  simp [Finset.sum_range_succ, pow_succ, logSeries]
 
 @[category test, AMS 5 11]
 theorem a_2 : a 2 = 130 := by
-  sorry
+  rw [a, coeff_subst_logSeries]
+  simp [Finset.sum_range_succ, pow_succ, coeff_mul, Finset.Nat.antidiagonal_succ, logSeries]
+  norm_num
 
 /--
 "Conjecture: given q and m are nonnegative integers, then exp( Sum_{n>=1} q^(n^m)*x^n/n ) is a
